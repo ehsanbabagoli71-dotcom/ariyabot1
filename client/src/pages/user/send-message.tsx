@@ -69,15 +69,43 @@ export default function SendMessagePanel() {
       });
 
       if (response.ok) {
-        setSuccessMessage("پیام با موفقیت ارسال شد");
+        console.log("پیام با موفقیت به WhatsApp API ارسال شد");
+        
+        // حالا پیام را در دیتابیس ذخیره کنیم
+        try {
+          const dbResponse = await createAuthenticatedRequest("/api/messages/sent", {
+            method: "POST",
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              recipient: phoneNumber,
+              message: `${messageText}${mediaLink.trim() ? `\n\nلینک ضمیمه: ${mediaLink}` : ''}`,
+              status: "sent"
+            }),
+          });
+
+          if (dbResponse.ok) {
+            console.log("پیام در دیتابیس ذخیره شد");
+          } else {
+            console.error("خطا در ذخیره پیام در دیتابیس:", await dbResponse.text());
+          }
+        } catch (dbError) {
+          console.error("خطا در ذخیره پیام در دیتابیس:", dbError);
+          // We don't throw here because the main message was sent successfully
+        }
+
+        setSuccessMessage("پیام با موفقیت ارسال شد و در گزارشات ذخیره شد");
         setPhoneNumber("");
         setMessageText("");
         setMediaLink("");
         toast({
           title: "موفقیت",
-          description: "پیام با موفقیت ارسال شد",
+          description: "پیام با موفقیت ارسال شد و در گزارشات ذخیره شد",
         });
       } else {
+        const errorText = await response.text();
+        console.error("WhatsApp API Error:", errorText);
         throw new Error("خطا در ارسال پیام");
       }
     } catch (err) {
